@@ -17,15 +17,20 @@ export function randomRanking(options: readonly GameOption[]): GameOption[] {
   return shuffle(options);
 }
 
+export const BEE_COMPETITION_TOTAL = 600;
+
 export function randomBeeCounts(options: readonly GameOption[]) {
   const counts = options.map(() => 0);
-  const beeTotal = options.length + 3;
 
-  for (let bee = 0; bee < beeTotal; bee += 1) {
+  for (let bee = 0; bee < BEE_COMPETITION_TOTAL; bee += 1) {
     counts[pickRandomIndex(counts.length)] += 1;
   }
 
   const highestCount = Math.max(...counts);
-  const winnerIndex = counts.findIndex((count) => count === highestCount);
-  return { counts, winnerIndex };
+  const tiedWinnerIndexes = counts
+    .map((count, index) => ({ count, index }))
+    .filter(({ count }) => count === highestCount)
+    .map(({ index }) => index);
+  const winnerIndex = tiedWinnerIndexes[0];
+  return { counts, winnerIndex, tiedWinnerIndexes };
 }

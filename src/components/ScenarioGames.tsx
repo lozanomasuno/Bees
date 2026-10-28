@@ -57,21 +57,68 @@ export function PodiumGame({ options, onExit }: Props) {
 
 export function BeehivesGame({ options, onExit }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<BeehivesScene | null>(null);
+  const sceneRef = useRef<BeehivesScene | DoorsScene | null>(null);
   const [result, setResult] = useState<{ counts: number[]; winner: number } | null>(null);
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [tiedCandidates, setTiedCandidates] = useState<number[] | null>(null);
+  const [tiePairIndex, setTiePairIndex] = useState(1);
+  const [tieChampion, setTieChampion] = useState<number | null>(null);
+  const [finalTiebreakWinner, setFinalTiebreakWinner] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current || tiedCandidates) return;
     const generated = randomBeeCounts(options);
-    const scene = new BeehivesScene(options.map((option) => option.label), generated.counts, generated.winnerIndex, (counts, winner) => { setResult({ counts, winner }); setBusy(false); });
+    setBusy(true);
+    setResult(null);
+    const scene = new BeehivesScene(options.map((option) => option.label), generated.counts, generated.winnerIndex, (counts, _winner, tiedIndexes) => {
+      setBusy(false);
+      if (tiedIndexes.length > 1) {
+        setResult({ counts, winner: tiedIndexes[0] });
+        setTiedCandidates(tiedIndexes);
+        setTiePairIndex(1);
+        setTieChampion(null);
+      } else {
+        setResult({ counts, winner: tiedIndexes[0] });
+      }
+    });
     sceneRef.current = scene;
     const game = createGame(ref.current, scene);
+    window.setTimeout(() => scene.play(), 350);
     return () => { sceneRef.current = null; game.destroy(true); };
-  }, [options, round]);
+  }, [options, round, tiedCandidates]);
 
-  const play = () => { if (busy) return; setResult(null); setBusy(true); sceneRef.current?.play(); };
-  const reset = () => { setResult(null); setBusy(false); setRound((current) => current + 1); };
-  return <section className="card-game"><header className="game-header"><div><span className="eyebrow">ESCENARIO DE BEES</span><h2>La competencia de panales</h2></div><button className="button button-secondary" onClick={onExit}>← Volver</button></header><div className="game-stage"><div ref={ref} className="phaser-container" /></div>{result && <section className="completion-message"><span>🍯🐝🎉</span><h3>Ganador: {options[result.winner].label}</h3><p>{result.counts.map((count, index) => `${options[index].label}: ${count}`).join(' · ')}</p></section>}<nav className="floating-menu"><button className="button button-primary" onClick={play} disabled={busy}>🐝 Lanzar abejas</button><button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button></nav></section>;
+  useEffect(() => {
+    if (!ref.current || !tiedCandidates || tiedCandidates.length < 2) return;
+    const firstIndex = tieChampion ?? tiedCandidates[0];
+    const secondIndex = tiedCandidates[tiePairIndex];
+    const pairLabels = [options[firstIndex].label, options[secondIndex].label];
+    const doorWinner = pickRandomIndex(2);
+    const scene = new DoorsScene(pairLabels, doorWinner, (doorIndex) => {
+      const winner = doorIndex === 0 ? firstIndex : secondIndex;
+      if (tiePairIndex >= tiedCandidates.length - 1) {
+        setFinalTiebreakWinner(winner);
+        return;
+      }
+      setTieChampion(winner);
+      setTiePairIndex((current) => current + 1);
+    });
+    sceneRef.current = scene;
+    const game = createGame(ref.current, scene);
+    window.setTimeout(() => scene.play(), 350);
+    return () => { sceneRef.current = null; game.destroy(true); };
+  }, [options, tiedCandidates, tiePairIndex, tieChampion]);
+
+  const reset = () => {
+    setResult(null);
+    setBusy(false);
+    setTiedCandidates(null);
+    setTiePairIndex(1);
+    setTieChampion(null);
+    setFinalTiebreakWinner(null);
+    setRound((current) => current + 1);
+  };
+
+  const displayedWinner = finalTiebreakWinner ?? result?.winner ?? null;
+  return <section className="card-game"><header className="game-header"><div><span className="eyebrow">ESCENARIO DE BEES</span><h2>La competencia de panales</h2></div><button className="button button-secondary" onClick={onExit}>← Volver</button></header><div className="game-stage"><div ref={ref} className="phaser-container" /></div>{result && <section className="completion-message"><span>{finalTiebreakWinner !== null ? '🚪🐝🎉' : '🍯🐝🎉'}</span><h3>Ganador: {options[displayedWinner ?? result.winner].label}</h3>{finalTiebreakWinner !== null && <p>Empate resuelto mediante las puertas.</p>}<p>{result.counts.map((count, index) => `${options[index].label}: ${count}`).join(' · ')}</p></section>}<nav className="floating-menu"><button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button></nav></section>;
 }
