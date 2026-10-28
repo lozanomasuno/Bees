@@ -29,9 +29,8 @@ export function DoorsGame({ options, onExit }: Props) {
     return () => { sceneRef.current = null; game.destroy(true); };
   }, [options, round]);
 
-  const play = () => { if (busy) return; setBusy(true); setWinner(null); sceneRef.current?.play(); };
   const reset = () => { setWinner(null); setBusy(false); setRound((current) => current + 1); };
-  return <section className="card-game"><header className="game-header"><div><span className="eyebrow">ESCENARIO DE BEES</span><h2>Las dos puertas</h2></div><button className="button button-secondary" onClick={onExit}>← Volver</button></header><div className="game-stage"><div ref={ref} className="phaser-container" /></div>{winner !== null && <section className="completion-message"><span>🚪🐝✨</span><h3>{options[winner].label}</h3><p>Segunda opción: {options[winner === 0 ? 1 : 0].label}</p></section>}<nav className="floating-menu"><button className="button button-primary" onClick={play} disabled={busy}>🎲 Abrir una puerta</button><button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button></nav></section>;
+  return <section className="card-game"><header className="game-header"><div><span className="eyebrow">ESCENARIO DE BEES</span><h2>Las dos puertas</h2></div><button className="button button-secondary" onClick={onExit}>← Volver</button></header><div className="game-stage"><div ref={ref} className="phaser-container" /></div>{winner !== null && <section className="completion-message"><span>🚪🐝✨</span><h3>{options[winner].label}</h3><p>Segunda opción: {options[winner === 0 ? 1 : 0].label}</p></section>}<nav className="floating-menu"><button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button></nav></section>;
 }
 
 export function PodiumGame({ options, onExit }: Props) {
@@ -105,7 +104,6 @@ export function BeehivesGame({ options, onExit }: Props) {
     });
     sceneRef.current = scene;
     const game = createGame(ref.current, scene);
-    window.setTimeout(() => scene.play(), 350);
     return () => { sceneRef.current = null; game.destroy(true); };
   }, [options, tiedCandidates, tiePairIndex, tieChampion]);
 
