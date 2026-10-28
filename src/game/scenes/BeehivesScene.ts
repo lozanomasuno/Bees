@@ -13,8 +13,10 @@ interface BeeFlight {
   active: boolean;
 }
 
-const FLY_TIME_MIN = 220;
-const FLY_TIME_MAX = 380;
+const FLY_TIME_MIN = 550;
+const FLY_TIME_MAX = 850;
+const WAVE_INTERVAL_MIN = 18;
+const WAVE_INTERVAL_MAX = 25;
 const BEE_POOL_SIZE = 48;
 
 export class BeehivesScene extends Phaser.Scene {
@@ -31,8 +33,9 @@ export class BeehivesScene extends Phaser.Scene {
   private remainingTargets: number[] = [];
   private launchIndex = 0;
   private launchAccumulator = 0;
-  private completionTimer?: Phaser.Time.TimerEvent;
   private leafTimer?: Phaser.Time.TimerEvent;
+  private arrivedCount = 0;
+  private finished = false;
 
   constructor(options: string[], counts: number[], winnerIndex: number, onComplete: (counts: number[], winnerIndex: number, tiedWinnerIndexes: number[]) => void) {
     super({ key: 'BeehivesScene' });
@@ -44,6 +47,8 @@ export class BeehivesScene extends Phaser.Scene {
 
   create() {
     this.running = false;
+    this.finished = false;
+    this.arrivedCount = 0;
     this.counterTexts = [];
     this.visibleCounts = this.counts.map(() => 0);
     this.hiveGraphics = [];
@@ -60,22 +65,67 @@ export class BeehivesScene extends Phaser.Scene {
     });
 
     for (let index = 0; index < BEE_POOL_SIZE; index += 1) {
-      const bee = this.add.text(-40, -40, '??', { fontFamily: 'Arial', fontSize: '22px' }).setOrigin(0.5).setDepth(12).setVisible(false);
+      const bee = this.add.text(-40, -40, '🐝', { fontFamily: 'Arial', fontSize: '22px' }).setOrigin(0.5).setDepth(12).setVisible(false);
       this.beePool.push(bee);
     }
     this.scheduleLeafFall();
   }
 
   private drawForest() {
-    this.add.rectangle(500, 310, 1000, 620, 0x251a36);
-    this.add.rectangle(500, 310, 1000, 620, 0x668d58).setDepth(-30);
-    const ground = this.add.graphics().setDepth(-20);
-    ground.fillStyle(0x30251b, 0.35).fillEllipse(500, 590, 930, 72);
-    ground.fillStyle(0x4f7656, 1).fillRoundedRect(20, 540, 960, 65, 24);
+    const sky = this.add.graphics().setDepth(-40);
+    sky.fillGradientStyle(0x6f7190, 0x6f7190, 0x4f7656, 0x294b35, 1).fillRect(0, 0, 1000, 620);
+    sky.fillStyle(0xfff9e9, 0.16).fillTriangle(0, 70, 330, 620, 520, 620);
+    sky.fillStyle(0xffd43b, 0.12).fillCircle(820, 115, 100);
 
-    for (let x = 20; x < 1000; x += 125) {
-      this.add.rectangle(x, 430, 38, 280, 0x855532).setStrokeStyle(4, 0x30251b).setDepth(-12);
-      this.add.circle(x, 326, 78, x % 250 ? 0x4f7656 : 0x73c66a).setStrokeStyle(5, 0x30251b).setDepth(-11);
+    [-20, 150, 330, 560, 820, 980].forEach((x, index) => {
+      const cloud = this.add.graphics().setDepth(-35);
+      cloud.fillStyle(0xfff9e9, 0.62).fillEllipse(x, 105 + index % 3 * 22, 130, 34);
+      cloud.fillCircle(x - 35, 96 + index % 3 * 22, 28).fillCircle(x + 28, 91 + index % 3 * 22, 36);
+    });
+
+    const distant = this.add.graphics().setDepth(-32);
+    distant.fillStyle(0x294b35, 0.72);
+    [70, 220, 390, 560, 730, 910].forEach((x, index) => {
+      distant.fillTriangle(x, 390, x - 70, 120 + index % 2 * 40, x + 85, 390);
+      distant.fillTriangle(x, 330, x - 58, 70 + index % 3 * 35, x + 68, 330);
+    });
+
+    const middleTrees = this.add.graphics().setDepth(-24);
+    [35, 175, 845, 970].forEach((x, index) => {
+      middleTrees.fillStyle(0x855532, 1).fillRect(x, 270, 42, 310);
+      middleTrees.lineStyle(5, 0x30251b).strokeRect(x, 270, 42, 310);
+      const top = 250 + index % 2 * 28;
+      middleTrees.fillStyle(index % 2 ? 0x4f7656 : 0x294b35, 1);
+      middleTrees.fillCircle(x + 2, top, 82).fillCircle(x - 42, top + 28, 58).fillCircle(x + 52, top + 35, 66);
+      middleTrees.lineStyle(5, 0x30251b).strokeCircle(x + 2, top, 82);
+      middleTrees.lineStyle(3, 0x30251b, 0.8).beginPath().moveTo(x + 8, 390).lineTo(x + 25, 435).moveTo(x + 18, 455).lineTo(x - 2, 490).strokePath();
+    });
+
+    const ground = this.add.graphics().setDepth(-18);
+    ground.fillStyle(0x294b35).fillEllipse(500, 585, 1000, 105);
+    ground.lineStyle(5, 0x30251b).beginPath().moveTo(0, 548);
+    for (let x = 100; x <= 1000; x += 100) ground.lineTo(x, 548 + Math.sin(x * 0.012) * 18);
+    ground.strokePath();
+
+    const details = this.add.graphics().setDepth(-16);
+    for (let x = 25; x < 975; x += 48) {
+      const height = Phaser.Math.Between(12, 26);
+      details.lineStyle(3, x % 96 ? 0x73c66a : 0x4f7656).beginPath().moveTo(x, 570).lineTo(x - 7, 570 - height).moveTo(x, 570).lineTo(x + 3, 570 - height + 5).strokePath();
+    }
+    [150, 335, 685, 865].forEach((x, index) => {
+      details.fillStyle(index % 2 ? 0xff9f43 : 0xfff9e9).fillCircle(x, 548, 7);
+      details.lineStyle(3, 0x30251b).strokeCircle(x, 548, 7);
+      details.lineStyle(3, 0x73c66a).beginPath().moveTo(x, 555).lineTo(x, 570).strokePath();
+    });
+    [70, 930].forEach((x) => {
+      details.fillStyle(0xfff9e9).fillEllipse(x, 552, 27, 18);
+      details.fillStyle(0xff9f43).fillEllipse(x, 560, 14, 13);
+      details.lineStyle(3, 0x30251b).strokeEllipse(x, 552, 27, 18);
+      details.lineStyle(4, 0x855532).beginPath().moveTo(x, 558).lineTo(x, 575).strokePath();
+    });
+
+    for (let index = 0; index < 18; index += 1) {
+      this.add.circle(Phaser.Math.Between(80, 920), Phaser.Math.Between(90, 430), Phaser.Math.Between(2, 4), index % 2 ? 0xffd43b : 0xfff9e9, 0.38).setDepth(-14);
     }
     this.add.text(500, 42, 'LA COMPETENCIA DE PANALES', {
       fontFamily: 'Arial Black, Arial', fontSize: '27px', color: '#ffd43b', fontStyle: 'bold', stroke: '#30251b', strokeThickness: 5,
@@ -129,7 +179,7 @@ export class BeehivesScene extends Phaser.Scene {
     hive.fillStyle(0x30251b).fillEllipse(x, 356, 34, 23);
     this.hiveGraphics.push(hive);
 
-    const counter = this.add.text(x, 228, '0 ??', {
+    const counter = this.add.text(x, 228, '0 🐝', {
       fontFamily: 'Arial Black, Arial', fontSize: '19px', color: '#30251b', backgroundColor: '#fff9e9', padding: { x: 8, y: 4 },
     }).setOrigin(0.5).setDepth(8);
     this.counterTexts.push(counter);
@@ -154,28 +204,22 @@ export class BeehivesScene extends Phaser.Scene {
     this.remainingTargets = targets;
     this.launchIndex = 0;
     this.launchAccumulator = 0;
-
-    const expectedMaxDuration = 2100;
-    this.completionTimer = this.time.delayedCall(expectedMaxDuration, () => {
-      this.visibleCounts = [...this.counts];
-      this.counterTexts.forEach((text, index) => text.setText(`${this.counts[index]} ??`));
-      this.highlightWinner();
-      const tiedWinnerIndexes = this.counts
-        .map((count, index) => ({ count, index }))
-        .filter(({ count }) => count === Math.max(...this.counts))
-        .map(({ index }) => index);
-      this.running = false;
-      this.onComplete([...this.counts], this.winnerIndex, tiedWinnerIndexes);
-    });
+    this.arrivedCount = 0;
+    this.finished = false;
+    this.counterTexts.forEach((text) => text.setText('0 🐝').setBackgroundColor('#fff9e9'));
   }
 
   update(_time: number, delta: number) {
-    if (!this.running) return;
+    if (!this.running || this.finished) return;
     this.launchAccumulator += delta;
-    while (this.launchAccumulator >= 12 && this.launchIndex < this.remainingTargets.length) {
-      this.launchAccumulator -= 12;
-      const batch = Math.min(6, this.remainingTargets.length - this.launchIndex);
-      for (let index = 0; index < batch; index += 1) this.launchBee(this.remainingTargets[this.launchIndex++]);
+    const waveInterval = Phaser.Math.Between(WAVE_INTERVAL_MIN, WAVE_INTERVAL_MAX);
+    if (this.launchAccumulator >= waveInterval && this.launchIndex < this.remainingTargets.length) {
+      this.launchAccumulator -= waveInterval;
+      const batchSize = this.launchIndex < 40 && Phaser.Math.FloatBetween(0, 1) > 0.72 ? 2 : 1;
+      for (let batchIndex = 0; batchIndex < batchSize && this.launchIndex < this.remainingTargets.length; batchIndex += 1) {
+        if (!this.launchBee(this.remainingTargets[this.launchIndex])) break;
+        this.launchIndex += 1;
+      }
     }
 
     this.flights.forEach((flight) => {
@@ -190,17 +234,17 @@ export class BeehivesScene extends Phaser.Scene {
         flight.active = false;
         flight.bee.setVisible(false);
         this.visibleCounts[flight.targetIndex] += 1;
-        if (this.visibleCounts[flight.targetIndex] % 4 === 0 || this.visibleCounts[flight.targetIndex] === this.counts[flight.targetIndex]) {
-          this.counterTexts[flight.targetIndex].setText(`${this.visibleCounts[flight.targetIndex]} ??`);
-        }
+        this.arrivedCount += 1;
+        this.counterTexts[flight.targetIndex].setText(`${this.visibleCounts[flight.targetIndex]} 🐝`);
+        if (this.launchIndex >= this.remainingTargets.length && this.arrivedCount >= this.remainingTargets.length && !this.finished) this.completeCompetition();
       }
     });
   }
 
-  private launchBee(targetIndex: number) {
+  private launchBee(targetIndex: number): boolean {
     const flight = this.flights.find((item) => !item.active);
     const bee = flight?.bee ?? this.beePool.find((candidate) => !candidate.visible);
-    if (!bee) return;
+    if (!bee) return false;
     const edge = Phaser.Math.Between(0, 3);
     const start = edge === 0 ? { x: -20, y: Phaser.Math.Between(120, 520) }
       : edge === 1 ? { x: 1020, y: Phaser.Math.Between(120, 520) }
@@ -224,6 +268,21 @@ export class BeehivesScene extends Phaser.Scene {
     } else {
       this.flights.push({ bee, targetIndex, startX: start.x, startY: start.y, targetX, targetY, elapsed: 0, duration: Phaser.Math.Between(FLY_TIME_MIN, FLY_TIME_MAX), wave: Phaser.Math.Between(18, 38), active: true });
     }
+    return true;
+  }
+
+  private completeCompetition() {
+    this.finished = true;
+    this.running = false;
+    this.visibleCounts = [...this.counts];
+    this.counterTexts.forEach((text, index) => text.setText(`${this.counts[index]} 🐝`));
+    this.highlightWinner();
+    const highestCount = Math.max(...this.counts);
+    const tiedWinnerIndexes = this.counts
+      .map((count, index) => ({ count, index }))
+      .filter(({ count }) => count === highestCount)
+      .map(({ index }) => index);
+    this.onComplete([...this.counts], this.winnerIndex, tiedWinnerIndexes);
   }
 
   private highlightWinner() {
@@ -252,8 +311,6 @@ export class BeehivesScene extends Phaser.Scene {
 
   reset() {
     this.running = false;
-    this.completionTimer?.remove(false);
-    this.completionTimer = undefined;
     this.leafTimer?.remove(false);
     this.leafTimer = undefined;
     this.flights.forEach((flight) => flight.bee.destroy());
