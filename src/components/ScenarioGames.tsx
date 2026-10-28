@@ -23,7 +23,13 @@ export function DoorsGame({ options, onExit }: Props) {
 
   useEffect(() => {
     if (!ref.current) return;
-    const scene = new DoorsScene(options.map((option) => option.label), pickRandomIndex(options.length), (index) => { setWinner(index); setBusy(false); });
+    // `onOpeningsChange` mantiene «Reiniciar» deshabilitado mientras una puerta se abre.
+    const scene = new DoorsScene(
+      options.map((option) => option.label),
+      pickRandomIndex(options.length),
+      (index) => { setWinner(index); setBusy(false); },
+      { onOpeningsChange: setBusy },
+    );
     sceneRef.current = scene;
     const game = createGame(ref.current, scene);
     return () => { sceneRef.current = null; game.destroy(true); };
@@ -93,15 +99,18 @@ export function BeehivesGame({ options, onExit }: Props) {
     const secondIndex = tiedCandidates[tiePairIndex];
     const pairLabels = [options[firstIndex].label, options[secondIndex].label];
     const doorWinner = pickRandomIndex(2);
+    const isFinalPair = tiePairIndex >= tiedCandidates.length - 1;
+    // En rondas intermedias la escena se destruye al recibir el resultado: se bloquean las puertas restantes.
+    // En la ronda final se puede abrir la otra puerta, pero solo revela su contenido (no cambia el ganador).
     const scene = new DoorsScene(pairLabels, doorWinner, (doorIndex) => {
       const winner = doorIndex === 0 ? firstIndex : secondIndex;
-      if (tiePairIndex >= tiedCandidates.length - 1) {
+      if (isFinalPair) {
         setFinalTiebreakWinner(winner);
         return;
       }
       setTieChampion(winner);
       setTiePairIndex((current) => current + 1);
-    });
+    }, { lockAfterResult: !isFinalPair, onOpeningsChange: setBusy });
     sceneRef.current = scene;
     const game = createGame(ref.current, scene);
     return () => { sceneRef.current = null; game.destroy(true); };
