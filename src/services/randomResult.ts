@@ -19,13 +19,13 @@ export function randomRanking(options: readonly GameOption[]): GameOption[] {
 
 export function randomBeeCounts(options: readonly GameOption[]) {
   const counts = options.map(() => 0);
-  const winner = pickRandomIndex(options.length);
-  counts[winner] = 1;
+  const beeTotal = options.length + 3;
 
-  while (counts.reduce((total, count) => total + count, 0) < options.length + 3) {
-    const index = pickRandomIndex(options.length);
-    counts[index] += 1;
+  for (let bee = 0; bee < beeTotal; bee += 1) {
+    counts[pickRandomIndex(counts.length)] += 1;
   }
 
-  return { counts, winnerIndex: winner };
+  const highestCount = Math.max(...counts);
+  const winnerIndex = counts.findIndex((count) => count === highestCount);
+  return { counts, winnerIndex };
 }
