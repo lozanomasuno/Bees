@@ -98,7 +98,10 @@ export class BeehivesScene extends Phaser.Scene {
       });
     }
     for (let index = 0; index < BEE_POOL_SIZE; index += 1) {
-      const bee = this.add.sprite(-40, -40, FOREST_TEXTURES.bee, BEE_FRAMES[0]).setOrigin(0.5).setDepth(12).setVisible(false);
+      const bee = this.add.sprite(-40, -40, FOREST_TEXTURES.bee, BEE_FRAMES[0])
+        .setOrigin(0.5)
+        .setDepth(12)
+        .setVisible(false);
       bee.play({ key: BEE_FLAP_ANIMATION, startFrame: index % 4 });
       this.beePool.push(bee);
     }

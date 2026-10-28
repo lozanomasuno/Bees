@@ -776,7 +776,9 @@ function paintFrontGround(ctx: CanvasRenderingContext2D, rng: Rng) {
   );
 
   // Hierba continua.
-  for (let x = 0; x <= 1000; x += 9) drawGrassTuft(ctx, rng, x + range(rng, -3, 3), profile(x) + 18, range(rng, 10, 22));
+  for (let x = 0; x <= 1000; x += 9) {
+    drawGrassTuft(ctx, rng, x + range(rng, -3, 3), profile(x) + 18, range(rng, 10, 22));
+  }
 
   // Helechos, más grandes en los laterales.
   for (let fern = 0; fern < 16; fern += 1) {

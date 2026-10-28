@@ -141,7 +141,8 @@ export class HiveView {
     }).setOrigin(0.5).setDepth(DEPTH.label);
     const bounds = label.getBounds();
     const plate = scene.add.graphics().setDepth(DEPTH.label - 0.5);
-    plate.fillStyle(0x140c04, 0.3).fillRoundedRect(bounds.x - 9, bounds.y - 3, bounds.width + 18, bounds.height + 10, 10);
+    plate.fillStyle(0x140c04, 0.3)
+      .fillRoundedRect(bounds.x - 9, bounds.y - 3, bounds.width + 18, bounds.height + 10, 10);
     plate.fillStyle(0x3b2a17, 0.78).fillRoundedRect(bounds.x - 10, bounds.y - 5, bounds.width + 20, bounds.height + 10,
       10);
     plate.lineStyle(2, 0xe0a83a, 0.9).strokeRoundedRect(bounds.x - 10, bounds.y - 5, bounds.width + 20,

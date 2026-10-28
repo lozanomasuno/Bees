@@ -29,10 +29,10 @@ const DEPTH = {
 
 /** Haces de luz que bajan en diagonal desde el sol (arriba a la derecha). */
 const SHAFTS = [
-  { x: 560, width: 0.9, alpha: 0.16, duration: 5200 },
-  { x: 690, width: 1.3, alpha: 0.2, duration: 6400 },
-  { x: 810, width: 0.8, alpha: 0.14, duration: 4700 },
-  { x: 380, width: 0.7, alpha: 0.1, duration: 7100 },
+  { x: 560, width: 0.9, alpha: 0.26, duration: 5200 },
+  { x: 690, width: 1.3, alpha: 0.32, duration: 6400 },
+  { x: 810, width: 0.8, alpha: 0.24, duration: 4700 },
+  { x: 380, width: 0.7, alpha: 0.18, duration: 7100 },
 ];
 const SHAFT_ANGLE = 18;
 
