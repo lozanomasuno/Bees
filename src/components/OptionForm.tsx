@@ -5,6 +5,8 @@ interface OptionFormProps {
   onStart: (options: GameOption[]) => void;
 }
 
+const normalizeOption = (value: string) => value.trim().toLocaleLowerCase();
+
 export default function OptionForm({ onStart }: OptionFormProps) {
   const [options, setOptions] = useState<GameOption[]>([]);
   const [value, setValue] = useState('');
@@ -22,6 +24,11 @@ export default function OptionForm({ onStart }: OptionFormProps) {
 
     if (options.length >= 10) {
       setError('¡Solo puedes ingresar 10 opciones!');
+      return;
+    }
+
+    if (options.some((option) => normalizeOption(option.label) === normalizeOption(label))) {
+      setError('Esta opción ya existe. No puedes agregar opciones duplicadas.');
       return;
     }
 
@@ -45,6 +52,12 @@ export default function OptionForm({ onStart }: OptionFormProps) {
   const startGame = () => {
     if (options.length < 2) {
       setError('Necesitas al menos 2 opciones para jugar.');
+      return;
+    }
+
+    const normalizedLabels = options.map((option) => normalizeOption(option.label));
+    if (new Set(normalizedLabels).size !== normalizedLabels.length) {
+      setError('Hay opciones duplicadas. Elimina las repeticiones antes de jugar.');
       return;
     }
 

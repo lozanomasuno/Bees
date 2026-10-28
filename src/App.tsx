@@ -2,6 +2,8 @@ import { useState } from 'react';
 import OptionForm from './components/OptionForm';
 import { getScenarioLabel, getScenarioType } from './services/scenarioSelector';
 import type { GameOption } from './types/games';
+import CardGame from './components/CardGame';
+import { BeehivesGame, DoorsGame, PodiumGame } from './components/ScenarioGames';
 
 function App() {
   const [gameOptions, setGameOptions] = useState<GameOption[] | null>(null);
@@ -13,10 +15,6 @@ function App() {
   const resetGame = () => {
     setGameOptions(null);
   };
-
-  const scenario = gameOptions
-    ? getScenarioType(gameOptions.length)
-    : null;
 
   return (
     <main className="app-shell">
@@ -66,13 +64,23 @@ function App() {
       <div className="content">
         {!gameOptions ? (
           <OptionForm onStart={startGame} />
+        ) : getScenarioType(gameOptions.length) === 'doors' ? (
+          <DoorsGame options={gameOptions} onExit={resetGame} />
+        ) : getScenarioType(gameOptions.length) === 'podium' ? (
+          <PodiumGame options={gameOptions} onExit={resetGame} />
+        ) : getScenarioType(gameOptions.length) === 'beehives' ? (
+          <BeehivesGame options={gameOptions} onExit={resetGame} />
+        ) : getScenarioType(gameOptions.length) === 'cards' ? (
+          <CardGame options={gameOptions} onExit={resetGame} />
         ) : (
           <section className="game-preview">
-            <span className="eyebrow">TODO ESTÁ LISTO</span>
-            <h2>¡Que comience la aventura!</h2>
+            <span className="eyebrow">ESCENARIO EN PREPARACIÓN</span>
+            <h2>¡Tu aventura está lista!</h2>
 
             <p className="scenario-name">
-              Escenario: {getScenarioLabel(scenario!)}
+              Escenario: {getScenarioLabel(
+                getScenarioType(gameOptions.length)
+              )}
             </p>
 
             <div className="preview-options">
@@ -83,11 +91,6 @@ function App() {
                 </div>
               ))}
             </div>
-
-            <p className="preview-notice">
-              El escenario está seleccionado. En el siguiente paso
-              conectaremos esta pantalla con el motor de juego Phaser.
-            </p>
 
             <button
               className="button button-primary"
