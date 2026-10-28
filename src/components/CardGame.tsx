@@ -105,11 +105,13 @@ export default function CardGame({ options, onExit }: CardGameProps) {
         </button>
       </header>
 
-      <div className="game-stage">
-        <div ref={gameContainer} className="phaser-container" />
-      </div>
+      <div className="card-game-layout">
+        <div className="game-board">
+          <div className="game-stage">
+            <div ref={gameContainer} className="phaser-container" />
+          </div>
 
-      <nav className="floating-menu" aria-label="Controles del juego">
+          <nav className="floating-menu" aria-label="Controles del juego">
         <button
           className="button button-secondary"
           onClick={shuffle}
@@ -133,9 +135,10 @@ export default function CardGame({ options, onExit }: CardGameProps) {
         >
           ↺ Reiniciar
         </button>
-      </nav>
+          </nav>
+        </div>
 
-      <section className="results-panel">
+        <section className="results-panel">
         <div className="results-heading">
           <h3>Opciones descubiertas</h3>
           <span className="counter">
@@ -171,7 +174,8 @@ export default function CardGame({ options, onExit }: CardGameProps) {
             <p>El misterio de la caverna ha sido revelado.</p>
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </section>
   );
 }

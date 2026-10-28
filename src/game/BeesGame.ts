@@ -14,8 +14,8 @@ export function createBeesGame(
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    width: 1000,
-    height: 620,
+    width: 1200,
+    height: 720,
     backgroundColor: '#251a36',
     scale: {
       mode: Phaser.Scale.FIT,

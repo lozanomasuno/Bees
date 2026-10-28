@@ -61,7 +61,7 @@ function App() {
         </div>
       </section>
 
-      <div className="content">
+      <div className={gameOptions ? 'content content-game' : 'content'}>
         {!gameOptions ? (
           <OptionForm onStart={startGame} />
         ) : getScenarioType(gameOptions.length) === 'doors' ? (
