@@ -89,8 +89,14 @@ export function BeehivesGame({ options, onExit }: Props) {
     });
     sceneRef.current = scene;
     const game = createGame(ref.current, scene);
-    window.setTimeout(() => scene.play(), 350);
-    return () => { sceneRef.current = null; game.destroy(true); };
+    // El temporizador se cancela al desmontar: si no, StrictMode o un reinicio en los primeros 350 ms
+    // llamarían a `play()` sobre una escena ya destruida.
+    const playTimer = window.setTimeout(() => scene.play(), 350);
+    return () => {
+      window.clearTimeout(playTimer);
+      sceneRef.current = null;
+      game.destroy(true);
+    };
   }, [options, round, tiedCandidates]);
 
   useEffect(() => {
