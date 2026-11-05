@@ -3,8 +3,14 @@ import Phaser from 'phaser';
 import type { GameOption } from '../types/games';
 import { pickRandomIndex, randomBeeCounts, shuffle } from '../services/randomResult';
 import { DoorsScene } from '../game/scenes/DoorsScene';
-import { PodiumScene } from '../game/scenes/PodiumScene';
 import { BeehivesScene } from '../game/scenes/BeehivesScene';
+import MagicOptionsPodium from './podium/MagicOptionsPodium';
+import {
+  PODIUM_PLACES,
+  PODIUM_REVEAL_ORDER,
+  type MagicCardStatus,
+  type MagicPodiumItem,
+} from './podium/podiumThemes';
 
 interface Props { options: GameOption[]; onExit: () => void; }
 
@@ -39,25 +45,119 @@ export function DoorsGame({ options, onExit }: Props) {
   return <section className="card-game"><header className="game-header"><div><span className="eyebrow">ESCENARIO DE BEES</span><h2>Las dos puertas</h2></div><button className="button button-secondary" onClick={onExit}>← Volver</button></header><div className="game-stage"><div ref={ref} className="phaser-container" /></div>{winner !== null && <section className="completion-message"><span>🚪🐝✨</span><h3>{options[winner].label}</h3><p>Segunda opción: {options[winner === 0 ? 1 : 0].label}</p></section>}<nav className="floating-menu"><button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button></nav></section>;
 }
 
+/** Pausa antes del primer revelado automático y entre los siguientes (misma cadencia que la escena Phaser). */
+const PODIUM_FIRST_REVEAL_DELAY = 300;
+const PODIUM_REVEAL_STEP_DELAY = 850;
+
+/**
+ * Escenario «El podio mágico» (3 opciones), dibujado con `MagicOptionsPodium` (React, SVG y CSS).
+ *
+ * - `ranking[place]` es el índice de la opción en cada puesto (0 = 1.er puesto); se sortea al montar y al
+ *   reiniciar.
+ * - Revelado por pasos: `revealedCount` puestos visibles siguiendo `PODIUM_REVEAL_ORDER` (3.º → 2.º → 1.º).
+ *   El jugador pulsa el panel disponible, o «Revelar podio» revela los restantes con temporizador; mientras
+ *   tanto (`busy`) los paneles y «Reiniciar» quedan bloqueados.
+ * - El 1.er puesto revelado es el estado `selected` del podio; el mensaje final aparece con los tres puestos.
+ */
 export function PodiumGame({ options, onExit }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<PodiumScene | null>(null);
-  const [ranking, setRanking] = useState<number[] | null>(null);
-  const [round, setRound] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const totalPlaces = PODIUM_REVEAL_ORDER.length;
+  const [ranking, setRanking] = useState(() => shuffle(options.map((_, index) => index)));
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [autoRevealing, setAutoRevealing] = useState(false);
+  const completionRef = useRef<HTMLElement>(null);
+
+  const finished = revealedCount >= totalPlaces;
+  const busy = autoRevealing && !finished;
 
   useEffect(() => {
-    if (!ref.current) return;
-    const result = shuffle(options.map((_, index) => index));
-    const scene = new PodiumScene(options.map((option) => option.label), result, (places) => { setRanking(places); setBusy(false); });
-    sceneRef.current = scene;
-    const game = createGame(ref.current, scene);
-    return () => { sceneRef.current = null; game.destroy(true); };
-  }, [options, round]);
+    if (!busy) return;
+    const timer = window.setTimeout(
+      () => setRevealedCount((current) => Math.min(current + 1, totalPlaces)),
+      revealedCount === 0 ? PODIUM_FIRST_REVEAL_DELAY : PODIUM_REVEAL_STEP_DELAY,
+    );
+    return () => window.clearTimeout(timer);
+  }, [busy, revealedCount, totalPlaces]);
 
-  const play = () => { if (busy) return; setRanking(null); setBusy(true); sceneRef.current?.play(); };
-  const reset = () => { setRanking(null); setBusy(false); setRound((current) => current + 1); };
-  return <section className="card-game"><header className="game-header"><div><span className="eyebrow">ESCENARIO DE BEES</span><h2>El podio mágico</h2></div><button className="button button-secondary" onClick={onExit}>← Volver</button></header><div className="game-stage"><div ref={ref} className="phaser-container" /></div>{ranking && <section className="completion-message"><span>🏆🐝✨</span><h3>Ganador: {options[ranking[0]].label}</h3><p>2º {options[ranking[1]].label} · 3º {options[ranking[2]].label}</p></section>}<nav className="floating-menu"><button className="button button-primary" onClick={play} disabled={busy}>✨ Revelar podio</button><button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button></nav></section>;
+  const revealNext = () => {
+    if (busy) return;
+    setRevealedCount((current) => Math.min(current + 1, totalPlaces));
+  };
+  const revealAll = () => {
+    if (busy || finished) return;
+    setAutoRevealing(true);
+  };
+  const reset = () => {
+    setRanking(shuffle(options.map((_, index) => index)));
+    setRevealedCount(0);
+    setAutoRevealing(false);
+  };
+
+  const items: MagicPodiumItem[] = PODIUM_PLACES.map((theme) => {
+    const step = PODIUM_REVEAL_ORDER.indexOf(theme.place);
+    const isRevealed = revealedCount > step;
+    const isNext = !busy && revealedCount === step;
+    let status: MagicCardStatus = 'locked';
+    if (isRevealed) status = theme.place === 0 ? 'selected' : 'revealed';
+    else if (isNext) status = 'ready';
+
+    let description = 'Aún bajo el hechizo';
+    if (isRevealed) description = theme.description;
+    else if (isNext) description = 'Toca para revelar';
+
+    return {
+      id: `place-${theme.place}`,
+      title: theme.title,
+      content: isRevealed ? options[ranking[theme.place]].label : null,
+      description,
+      material: theme.material,
+      status,
+      pedestal: String(theme.place + 1),
+      featured: theme.place === 0,
+      onActivate: isNext ? revealNext : undefined,
+    };
+  });
+
+  const lastPlace = revealedCount > 0 ? PODIUM_REVEAL_ORDER[revealedCount - 1] : null;
+  const lastTheme = PODIUM_PLACES.find((theme) => theme.place === lastPlace);
+  const announcement = lastPlace !== null && lastTheme
+    ? `${lastTheme.title}: ${options[ranking[lastPlace]].label}`
+    : '';
+
+  return (
+    <section className="card-game">
+      <header className="game-header">
+        <div>
+          <span className="eyebrow">ESCENARIO DE BEES</span>
+          <h2>El podio mágico</h2>
+        </div>
+        <button className="button button-secondary" onClick={onExit}>← Volver</button>
+      </header>
+
+      <div className="game-stage game-stage--podium">
+        <MagicOptionsPodium
+          items={items}
+          label="Podio con las tres opciones"
+          announcement={announcement}
+          focusAfterLastRef={completionRef}
+        />
+      </div>
+
+      {finished && (
+        <section className="completion-message" ref={completionRef} tabIndex={-1}>
+          <span>🏆🐝✨</span>
+          <h3>Ganador: {options[ranking[0]].label}</h3>
+          <p>2º {options[ranking[1]].label} · 3º {options[ranking[2]].label}</p>
+        </section>
+      )}
+
+      <nav className="floating-menu">
+        <button className="button button-primary" onClick={revealAll} disabled={busy || finished}>
+          ✨ Revelar podio
+        </button>
+        <button className="button button-secondary" onClick={reset} disabled={busy}>↺ Reiniciar</button>
+      </nav>
+    </section>
+  );
 }
 
 export function BeehivesGame({ options, onExit }: Props) {

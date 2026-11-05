@@ -24,6 +24,9 @@
   --bees-rose: #f5b9c7;
   --bees-rose-strong: #f29fb3;
   --bees-lavender: #d7c8f4;
+  --bees-mint: #a9ddb6;
+  --bees-stone: #e8ddc7;
+  --bees-crystal: #70c9f4;
   --bees-paper: #fffdf5;
   --bees-parchment: #f8ecd3;
   --bees-danger: #a8261b;
@@ -1453,6 +1456,8 @@ button:disabled {
   border-radius: 18px;
   background: var(--bees-sage);
   text-align: center;
+  /* Las opciones sin espacios (hasta 100 caracteres) deben cortarse; si no, ensanchan la columna del juego. */
+  overflow-wrap: anywhere;
 }
 
 .completion-message > span {
@@ -1497,5 +1502,826 @@ button:disabled {
 
   .results-panel {
     padding: 17px;
+  }
+}
+
+/* ---------- Escenario: El podio mágico ---------- */
+
+/*
+ * Estilos de `components/podium`. Capas del escenario, de atrás hacia delante: bosque lejano desenfocado,
+ * haces de luz, árboles cercanos y suelo, bruma, luciérnagas, paneles y hierba delantera.
+ * Cada panel combina un material (`magic-card--roots`, `--honeycomb`, `--stone`) con el estado que decide
+ * el juego (`--locked`, `--ready`, `--revealed`, `--selected`). Las posiciones `.magic-decor--*`
+ * corresponden a los SVG de `MagicOptionDecorations.tsx`; `--pedestal-height` (por posición del podio)
+ * sirve para apoyar los adornos inferiores sobre el pedestal.
+ */
+
+.game-stage--podium {
+  position: relative;
+  background: linear-gradient(180deg, #17301f 0%, #24452e 45%, #2f5a39 100%);
+}
+
+.magic-podium {
+  position: relative;
+  display: flex;
+  min-height: 640px;
+  flex-direction: column;
+  justify-content: flex-end;
+  isolation: isolate;
+}
+
+/* Fondo */
+
+.magic-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.magic-backdrop svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.magic-backdrop__far {
+  opacity: 0.5;
+  filter: blur(3px);
+}
+
+.magic-backdrop__near {
+  filter: blur(0.6px);
+}
+
+.magic-backdrop__rays {
+  position: absolute;
+  inset: -10% 0 0;
+  background:
+    linear-gradient(104deg, transparent 0 22%, rgb(255 233 163 / 16%) 27%, transparent 34%),
+    linear-gradient(98deg, transparent 0 46%, rgb(255 233 163 / 12%) 52%, transparent 60%),
+    linear-gradient(110deg, transparent 0 66%, rgb(255 233 163 / 14%) 71%, transparent 78%),
+    radial-gradient(ellipse 60% 45% at 50% 0%, rgb(255 233 163 / 28%), transparent 70%);
+  animation: rays-pulse 5s ease-in-out infinite alternate;
+}
+
+.magic-backdrop__mist {
+  position: absolute;
+  inset: auto 0 0;
+  height: 45%;
+  background: linear-gradient(180deg, transparent, rgb(169 221 182 / 18%) 60%, rgb(169 221 182 / 8%));
+}
+
+.magic-backdrop__fireflies span {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bees-honey-light);
+  box-shadow: 0 0 10px 3px rgb(255 201 40 / 70%);
+  opacity: 0.2;
+  animation: magic-firefly 6s ease-in-out infinite;
+}
+
+.magic-backdrop__fireflies span:nth-child(1) { top: 22%; left: 8%; }
+.magic-backdrop__fireflies span:nth-child(2) { top: 38%; left: 22%; animation-delay: -1.5s; }
+.magic-backdrop__fireflies span:nth-child(3) { top: 18%; left: 70%; animation-delay: -3s; }
+.magic-backdrop__fireflies span:nth-child(4) { top: 46%; left: 88%; animation-delay: -4.2s; }
+.magic-backdrop__fireflies span:nth-child(5) { top: 60%; left: 6%; animation-delay: -2.2s; }
+.magic-backdrop__fireflies span:nth-child(6) { top: 30%; left: 52%; animation-delay: -5s; }
+.magic-backdrop__fireflies span:nth-child(7) { top: 64%; left: 94%; animation-delay: -0.8s; }
+
+.magic-foreground {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 40px;
+  margin-top: -26px;
+  pointer-events: none;
+}
+
+/* Distribución: 2.º · 1.º · 3.º con pedestales de distinta altura */
+
+.magic-podium__row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.16fr) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(28px, 4vw, 56px);
+  margin: 0;
+  padding: 112px clamp(40px, 6vw, 88px) 0;
+  list-style: none;
+}
+
+.magic-podium__slot {
+  --pedestal-height: 84px;
+
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+  animation: magic-float 6s ease-in-out infinite;
+}
+
+.magic-podium__slot:nth-child(2) {
+  --pedestal-height: 122px;
+
+  animation-delay: -2s;
+}
+
+.magic-podium__slot:nth-child(3) {
+  --pedestal-height: 58px;
+
+  animation-delay: -4s;
+}
+
+.magic-podium__slot--locked {
+  animation-play-state: paused;
+}
+
+/* Panel */
+
+.magic-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 280px;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 28px;
+  background: none;
+  color: var(--bees-ink);
+  text-align: center;
+  transition:
+    transform var(--dur-base) var(--ease-bounce),
+    filter var(--dur-base) ease;
+}
+
+.magic-card--featured {
+  max-width: 320px;
+}
+
+.magic-card__glow {
+  position: absolute;
+  inset: -8% -16% 20%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 201 40 / 60%), rgb(255 201 40 / 0%));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) ease;
+}
+
+.magic-card__frame {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  min-height: 300px;
+  flex-direction: column;
+  padding: 70px 18px 28px;
+  border: 4px solid var(--bees-ink);
+  box-shadow:
+    inset 0 6px 0 rgb(255 255 255 / 20%),
+    inset 0 -8px 0 rgb(57 35 24 / 26%),
+    6px 8px 0 var(--bees-ink);
+}
+
+.magic-card--featured .magic-card__frame {
+  min-height: 344px;
+  padding-top: 84px;
+}
+
+.magic-card__medallion {
+  position: absolute;
+  top: -58px;
+  left: 50%;
+  z-index: 3;
+  width: 116px;
+  filter: drop-shadow(3px 5px 0 rgb(57 35 24 / 40%));
+  translate: -50% 0;
+  transition: translate var(--dur-base) var(--ease-bounce);
+}
+
+.magic-card--featured .magic-card__medallion {
+  top: -72px;
+  width: 146px;
+}
+
+.magic-card__medallion svg,
+.magic-decor > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.magic-card__plaque {
+  position: relative;
+  display: flex;
+  min-height: 150px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 14px 18px;
+  border: 3px solid var(--bees-ink);
+  border-radius: 18px 18px 14px 14px;
+  background: linear-gradient(180deg, var(--bees-cream), var(--bees-parchment));
+  box-shadow:
+    inset 0 -4px 0 rgb(57 35 24 / 10%),
+    0 3px 0 rgb(57 35 24 / 35%);
+}
+
+.magic-card__title {
+  color: var(--bees-wood-dark);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.magic-card--featured .magic-card__title {
+  font-size: var(--fs-sm);
+}
+
+.magic-card__label {
+  max-width: 100%;
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  font-weight: var(--fw-bold);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.magic-card--featured .magic-card__label {
+  font-size: clamp(1.2rem, 1.9vw, 1.6rem);
+}
+
+.magic-card__mystery {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bees-ink-soft);
+  font-size: 1.9rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.18em;
+  line-height: 1;
+}
+
+.magic-card__lock {
+  font-size: 1.3rem;
+}
+
+.magic-card__description {
+  color: var(--bees-ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1.35;
+}
+
+.magic-card__ribbon {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  padding: 3px 14px;
+  border: 3px solid var(--bees-ink);
+  border-radius: var(--radius-pill);
+  background: var(--bees-honey);
+  box-shadow: 0 3px 0 var(--bees-ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  translate: -50% 0;
+}
+
+.magic-card__pedestal {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  width: 112%;
+  height: var(--pedestal-height);
+  align-items: center;
+  justify-content: center;
+  margin-top: -8px;
+  padding-top: 6px;
+  border: 4px solid var(--bees-ink);
+  border-radius: 12px 12px 4px 4px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 26px, rgb(57 35 24 / 16%) 26px 28px),
+    linear-gradient(180deg, #b47744 0 14px, var(--bees-wood) 14px, #7f4e2c 100%);
+  box-shadow:
+    inset 0 -6px 0 rgb(57 35 24 / 22%),
+    6px 8px 0 var(--bees-ink);
+  color: var(--bees-cream);
+  font-size: 2rem;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  text-shadow: 0 3px 0 rgb(57 35 24 / 60%);
+}
+
+/* Materiales */
+
+.magic-card--roots .magic-card__frame {
+  border-radius: 46% 54% 22px 26px / 24% 28% 22px 22px;
+  background:
+    radial-gradient(ellipse 16px 7px at 26% 64%, rgb(57 35 24 / 30%) 0 55%, transparent 60%),
+    radial-gradient(ellipse 12px 5px at 78% 30%, rgb(57 35 24 / 26%) 0 55%, transparent 60%),
+    repeating-linear-gradient(
+      93deg,
+      rgb(57 35 24 / 0%) 0 13px,
+      rgb(57 35 24 / 13%) 13px 15px,
+      rgb(57 35 24 / 0%) 15px 29px
+    ),
+    linear-gradient(180deg, #b47744 0%, var(--bees-wood) 55%, #845230 100%);
+}
+
+.magic-card--honeycomb .magic-card__frame {
+  border-radius: 50% 50% 24px 24px / 30% 30% 24px 24px;
+  background:
+    radial-gradient(ellipse 85% 45% at 50% 0%, rgb(255 201 40 / 40%), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='48'%3E%3Cpath d='M14 0 28 8v16l-14 8L0 24V8zM14 32v16' fill='none' stroke='%23ffc928' stroke-opacity='.2' stroke-width='1.5'/%3E%3C/svg%3E")
+      center top / 28px 48px,
+    linear-gradient(180deg, #6b3f22 0%, #4a2b19 60%, var(--bees-ink) 100%);
+  box-shadow:
+    inset 0 0 0 5px var(--bees-gold),
+    inset 0 0 0 9px rgb(57 35 24 / 55%),
+    inset 0 10px 24px rgb(255 201 40 / 35%),
+    0 0 30px rgb(255 201 40 / 40%),
+    6px 8px 0 var(--bees-ink);
+}
+
+.magic-card--honeycomb .magic-card__plaque {
+  background: linear-gradient(180deg, #fff9e3, var(--bees-honey-light));
+  box-shadow:
+    inset 0 -4px 0 rgb(217 149 19 / 25%),
+    0 3px 0 rgb(57 35 24 / 35%);
+}
+
+.magic-card--honeycomb .magic-card__pedestal {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 26px, rgb(0 0 0 / 18%) 26px 28px),
+    linear-gradient(180deg, var(--bees-gold) 0 12px, #5b3520 12px, #3f2416 100%);
+  color: var(--bees-honey-light);
+}
+
+.magic-card--stone .magic-card__frame {
+  padding-bottom: 40px;
+  border-radius: 40% 40% 16px 16px / 20% 20% 16px 16px;
+  background:
+    radial-gradient(circle at 20% 30%, rgb(57 35 24 / 10%) 0 2px, transparent 3px) 0 0 / 34px 30px,
+    repeating-linear-gradient(180deg, transparent 0 36px, rgb(57 35 24 / 16%) 36px 38px),
+    repeating-linear-gradient(90deg, transparent 0 56px, rgb(57 35 24 / 12%) 56px 58px),
+    linear-gradient(180deg, #f6efe1 0%, var(--bees-stone) 50%, #cdbfa3 100%);
+}
+
+/* Umbral de madera bajo el arco de piedra. */
+.magic-card--stone .magic-card__frame::after {
+  position: absolute;
+  right: -12px;
+  bottom: -10px;
+  left: -12px;
+  height: 20px;
+  border: 4px solid var(--bees-ink);
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 22px, rgb(57 35 24 / 18%) 22px 24px),
+    linear-gradient(180deg, #b47744, var(--bees-wood));
+  content: "";
+}
+
+.magic-card--stone .magic-card__plaque {
+  background: linear-gradient(180deg, #fffdf7, #f1ebfa);
+}
+
+.magic-card--stone .magic-card__title {
+  color: #5a4691;
+}
+
+.magic-card--stone .magic-card__pedestal {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 40px, rgb(57 35 24 / 14%) 40px 42px),
+    linear-gradient(180deg, #f6efe1 0 12px, var(--bees-stone) 12px, #c9bb9e 100%);
+  color: var(--bees-wood-dark);
+  text-shadow: 0 2px 0 rgb(255 255 255 / 60%);
+}
+
+/* Adornos que sobresalen del marco */
+
+.magic-card__decor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transition: translate var(--dur-base) ease;
+}
+
+.magic-decor {
+  position: absolute;
+  display: block;
+  height: auto;
+  overflow: visible;
+}
+
+.magic-decor--crown-left { top: -34px; left: -34px; width: 96px; }
+.magic-decor--side-right { top: 70px; right: -20px; width: 40px; }
+/* Se ancla por arriba: la raíz horizontal queda sobre el borde inferior del marco, nunca sobre la placa. */
+.magic-decor--roots { top: calc(100% - var(--pedestal-height) - 24px); left: -8%; width: 116%; }
+.magic-decor--flowers { bottom: calc(var(--pedestal-height) - 4px); left: -22px; width: 70px; }
+
+.magic-decor--combs-left { top: 34%; left: -34px; width: 60px; }
+.magic-decor--combs-right { top: 9%; right: -38px; width: 70px; }
+
+.magic-decor--bee-one,
+.magic-decor--bee-two {
+  animation: magic-bee-hover 4.5s ease-in-out infinite;
+}
+
+.magic-decor--bee-one { top: -46px; left: 2px; width: 40px; }
+
+.magic-decor--bee-two {
+  top: 52%;
+  right: -44px;
+  width: 32px;
+  animation-duration: 5.2s;
+  animation-delay: -2s;
+}
+
+.magic-decor--crystals-left { bottom: calc(var(--pedestal-height) - 6px); left: -32px; width: 82px; }
+.magic-decor--crystals-right { top: 6%; right: -26px; width: 50px; }
+.magic-decor--lilacs { right: -24px; bottom: calc(var(--pedestal-height) - 2px); width: 70px; }
+
+.magic-decor--emblem {
+  bottom: calc(var(--pedestal-height) - 10px);
+  left: 50%;
+  width: 46px;
+  translate: -50% 0;
+}
+
+/* Animación de las piezas SVG (ver MagicOptionDecorations.tsx) */
+
+.magic-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: magic-sway 4s ease-in-out infinite alternate;
+}
+
+g:nth-child(2n) > .magic-sway {
+  animation-duration: 5s;
+  animation-delay: -1.5s;
+}
+
+.magic-bloom {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: magic-bloom 7s ease-in-out infinite alternate;
+}
+
+.magic-twinkle {
+  animation: magic-twinkle 2.8s ease-in-out infinite;
+}
+
+.magic-twinkle--b { animation-delay: -0.9s; }
+.magic-twinkle--c { animation-delay: -1.8s; }
+
+.magic-needle {
+  transform-origin: 60px 60px;
+  animation: magic-needle 5s ease-in-out infinite;
+}
+
+.magic-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: magic-glow-pulse 3.2s ease-in-out infinite;
+}
+
+/* Partículas del panel protagonista (más intensas en el seleccionado) */
+
+.magic-card__particles {
+  position: absolute;
+  inset: -6% -10% 30%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.magic-card__particles i {
+  position: absolute;
+  bottom: 20%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bees-honey-light);
+  box-shadow: 0 0 8px 2px rgb(255 201 40 / 80%);
+  opacity: 0;
+  animation: magic-sparkle 3.2s ease-out infinite;
+}
+
+.magic-card__particles i:nth-child(1) { left: 4%; }
+.magic-card__particles i:nth-child(2) { left: 92%; animation-delay: -0.6s; }
+.magic-card__particles i:nth-child(3) { bottom: 52%; left: 16%; animation-delay: -1.3s; }
+.magic-card__particles i:nth-child(4) { bottom: 60%; left: 82%; animation-delay: -2s; }
+.magic-card__particles i:nth-child(5) { bottom: 88%; left: 50%; animation-delay: -2.6s; }
+.magic-card__particles i:nth-child(6) { bottom: 70%; left: 0; animation-delay: -0.3s; }
+.magic-card__particles i:nth-child(7) { bottom: 36%; left: 98%; animation-delay: -1.7s; }
+.magic-card__particles i:nth-child(8) { bottom: 94%; left: 28%; animation-delay: -2.3s; }
+.magic-card__particles i:nth-child(9) { bottom: 96%; left: 70%; animation-delay: -1s; }
+.magic-card__particles i:nth-child(10) { bottom: 30%; left: 8%; animation-delay: -2.9s; }
+
+.magic-card--featured:not(.magic-card--selected) .magic-card__particles {
+  opacity: 0.6;
+}
+
+.magic-card--featured:not(.magic-card--selected) .magic-card__particles i:nth-child(n + 6) {
+  display: none;
+}
+
+/* Estados */
+
+.magic-card--featured .magic-card__glow {
+  opacity: 0.4;
+  animation: magic-glow-pulse 3.6s ease-in-out infinite;
+}
+
+.magic-card--ready {
+  cursor: pointer;
+}
+
+.magic-card--ready .magic-card__glow {
+  opacity: 0.55;
+  animation: magic-glow-pulse 2.4s ease-in-out infinite;
+}
+
+.magic-card--ready:hover,
+.magic-card--ready:focus-visible {
+  filter: brightness(1.06) saturate(1.08);
+  transform: translateY(-10px);
+}
+
+.magic-card--ready:hover .magic-card__decor,
+.magic-card--ready:focus-visible .magic-card__decor {
+  translate: 0 -4px;
+}
+
+.magic-card--ready:hover .magic-card__medallion,
+.magic-card--ready:focus-visible .magic-card__medallion {
+  translate: -50% -6px;
+}
+
+.magic-card--ready:active {
+  transform: translateY(-3px) scale(0.97);
+  transition-duration: var(--dur-fast);
+}
+
+.magic-card:focus-visible {
+  outline: 4px solid var(--bees-honey);
+  outline-offset: 10px;
+}
+
+/* Sustituye el estilo genérico de `button:disabled` por uno propio del podio. */
+.magic-card.magic-card--locked:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  box-shadow: none;
+  filter: saturate(0.55) brightness(0.9);
+  transform: none;
+}
+
+.magic-card--locked .magic-card__glow,
+.magic-card--locked .magic-card__particles {
+  display: none;
+}
+
+.magic-card--locked :is(.magic-sway, .magic-bloom, .magic-twinkle, .magic-needle, .magic-glow, .magic-decor),
+.magic-card--locked .bee-wing {
+  animation-play-state: paused;
+}
+
+.magic-card--revealed .magic-card__plaque,
+.magic-card--selected .magic-card__plaque {
+  animation: magic-reveal 700ms var(--ease-bounce) both;
+}
+
+.magic-card--revealed .magic-card__medallion,
+.magic-card--selected .magic-card__medallion {
+  animation: magic-pop 700ms var(--ease-bounce) both;
+}
+
+.magic-card--selected {
+  filter: drop-shadow(0 0 16px rgb(255 201 40 / 70%));
+  transform: translateY(-6px) scale(1.03);
+}
+
+.magic-card--selected .magic-card__glow {
+  opacity: 1;
+}
+
+.magic-card--selected .magic-card__plaque {
+  box-shadow:
+    0 0 0 4px var(--bees-honey),
+    0 0 26px rgb(255 201 40 / 65%);
+}
+
+@keyframes magic-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes magic-sway {
+  from { transform: rotate(-5deg); }
+  to { transform: rotate(5deg); }
+}
+
+@keyframes magic-bloom {
+  from { transform: rotate(-8deg) scale(0.96); }
+  to { transform: rotate(8deg) scale(1.04); }
+}
+
+@keyframes magic-twinkle {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes magic-needle {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(10deg); }
+}
+
+@keyframes magic-glow-pulse {
+  0%, 100% { scale: 0.94; }
+  50% { scale: 1.06; }
+}
+
+@keyframes magic-sparkle {
+  0% { opacity: 0; transform: translateY(10px) scale(0.4); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-70px) scale(1); }
+}
+
+@keyframes magic-reveal {
+  0% { opacity: 0; filter: brightness(1.5); transform: scale(0.85); }
+  60% { opacity: 1; transform: scale(1.04); }
+  100% { filter: none; transform: none; }
+}
+
+@keyframes magic-pop {
+  0% { scale: 0.6; }
+  60% { scale: 1.12; }
+  100% { scale: 1; }
+}
+
+@keyframes magic-bee-hover {
+  0%, 100% { transform: translate(0, 0) rotate(-6deg); }
+  50% { transform: translate(8px, -10px) rotate(6deg); }
+}
+
+@keyframes magic-firefly {
+  0%, 100% { opacity: 0.15; transform: translate(0, 0); }
+  50% { opacity: 0.9; transform: translate(12px, -16px); }
+}
+
+/* Tablet: paneles en fila con decoraciones y pedestales más pequeños. */
+@media (max-width: 1023px) {
+  .magic-podium {
+    min-height: 560px;
+  }
+
+  .magic-podium__row {
+    gap: 28px;
+    padding: 100px 36px 0;
+  }
+
+  .magic-podium__slot { --pedestal-height: 64px; }
+  .magic-podium__slot:nth-child(2) { --pedestal-height: 92px; }
+  .magic-podium__slot:nth-child(3) { --pedestal-height: 44px; }
+
+  .magic-card__frame {
+    min-height: 260px;
+    padding: 60px 12px 22px;
+  }
+
+  .magic-card--featured .magic-card__frame {
+    min-height: 300px;
+    padding-top: 72px;
+  }
+
+  .magic-card--stone .magic-card__frame {
+    padding-bottom: 34px;
+  }
+
+  .magic-card__medallion {
+    top: -50px;
+    width: 96px;
+  }
+
+  .magic-card--featured .magic-card__medallion {
+    top: -62px;
+    width: 124px;
+  }
+
+  .magic-card__plaque {
+    min-height: 130px;
+    padding: 18px 10px 14px;
+  }
+
+  .magic-card__pedestal {
+    font-size: 1.6rem;
+  }
+
+  .magic-decor {
+    scale: 0.78;
+  }
+}
+
+/* Móvil: columna con el 1.er puesto arriba; los adornos no salen del escenario (overflow oculto). */
+@media (max-width: 760px) {
+  .magic-podium {
+    min-height: 0;
+  }
+
+  .magic-podium__row {
+    grid-template-columns: minmax(0, 300px);
+    justify-content: center;
+    gap: 96px;
+    padding: 104px 28px 16px;
+  }
+
+  .magic-podium__slot--featured {
+    order: -1;
+  }
+
+  .magic-podium__slot,
+  .magic-podium__slot:nth-child(2),
+  .magic-podium__slot:nth-child(3) {
+    --pedestal-height: 46px;
+  }
+
+  .magic-card,
+  .magic-card--featured {
+    max-width: 300px;
+  }
+
+  .magic-card__frame,
+  .magic-card--featured .magic-card__frame {
+    min-height: 0;
+  }
+
+  .magic-card__plaque {
+    min-height: 120px;
+  }
+
+  .magic-card__pedestal {
+    width: 100%;
+    font-size: 1.3rem;
+  }
+
+  .magic-decor {
+    scale: 0.72;
+  }
+
+  .magic-card--selected {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+@media (max-width: 420px) {
+  .magic-podium__row {
+    padding-inline: 22px;
+  }
+
+  .magic-card__mystery {
+    font-size: 1.6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magic-podium__slot,
+  .magic-backdrop__rays,
+  .magic-card__glow,
+  .magic-card__plaque,
+  .magic-card__medallion,
+  .magic-decor,
+  .magic-sway,
+  .magic-bloom,
+  .magic-twinkle,
+  .magic-needle,
+  .magic-glow {
+    animation: none !important;
+  }
+
+  .magic-backdrop__fireflies,
+  .magic-card__particles {
+    display: none;
+  }
+
+  .magic-card {
+    transition: none;
   }
 }
